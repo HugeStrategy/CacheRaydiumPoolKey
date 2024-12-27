@@ -36,7 +36,6 @@ func DownloadFile(url, filepath string) error {
 	var bar *progressbar.ProgressBar
 
 	if contentLength > 0 {
-		// 初始化具有已知总大小的进度条
 		bar = progressbar.NewOptions64(
 			contentLength,
 			progressbar.OptionSetDescription("Downloading"),
@@ -53,8 +52,6 @@ func DownloadFile(url, filepath string) error {
 		)
 		writer = io.MultiWriter(out, bar)
 	} else {
-		// 初始化无总大小的进度指示器（旋转器）
-		fmt.Println("Downloading (unknown size)...")
 		bar = progressbar.NewOptions(
 			-1,
 			progressbar.OptionSetDescription("Downloading"),
@@ -85,6 +82,5 @@ func DownloadFile(url, filepath string) error {
 		_ = bar.Finish() // 显式完成进度条
 	}
 
-	fmt.Println("Download completed successfully.")
 	return nil
 }

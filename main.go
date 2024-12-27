@@ -58,19 +58,16 @@ var rootCmd = &cobra.Command{
 
 		// 4. 将筛选的数据存入 Redis
 		logger.Info("Processing data and storing in Redis...")
+		batchData := make(map[string]string)
 		for _, pool := range pools {
 			key := pool.BaseMint
 			value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
-			success, err := client.SetIfNotExists(key, value)
-			if success {
-				if err != nil {
-					logger.Warnf("Failed to set key %s in Redis: %v", key, err)
-				} else {
-					logger.Infof("Stored key %s in Redis", key)
-				}
-			} else {
-				logger.Warnf("Key %s already exists in Redis", key)
-			}
+			batchData[key] = value
+		}
+
+		// 批量写入 Redis
+		if err := client.BatchSet(batchData); err != nil {
+			logger.Fatalf("Failed to store data in Redis: %v", err)
 		}
 
 		logger.Info("All data processed and stored in Redis.")

@@ -22,20 +22,16 @@ func NewRedisClient(addr, password string, db int) *RedisClient {
 	return &RedisClient{Client: rdb}
 }
 
-func (r *RedisClient) Set(key, value string) error {
-	err := r.Client.Set(ctx, key, value, 0).Err()
+func (r *RedisClient) BatchSet(data map[string]string) error {
+	pipe := r.Client.Pipeline()
+	for key, value := range data {
+		pipe.Set(ctx, key, value, 0)
+	}
+	_, err := pipe.Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to set key: %v", err)
+		return fmt.Errorf("failed to execute batch set: %v", err)
 	}
 	return nil
-}
-
-func (r *RedisClient) SetIfNotExists(key, value string) (bool, error) {
-	success, err := r.Client.SetNX(ctx, key, value, 0).Result()
-	if err != nil {
-		return false, fmt.Errorf("failed to set key if not exists: %v", err)
-	}
-	return success, nil
 }
 
 func (r *RedisClient) Get(key string) (string, error) {
