@@ -19,7 +19,7 @@ var redisDB = 0
 var jsonURL = "https://api.raydium.io/v2/sdk/liquidity/mainnet.json"
 var outputFile = "mainnet.json"
 var programID = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
-var quoteMint = "So11111111111111111111111111111111111111112"
+var solAddress = "So11111111111111111111111111111111111111112"
 
 func init() {
 	// 配置日志
@@ -51,18 +51,29 @@ var rootCmd = &cobra.Command{
 
 		// 3. 解析并筛选 JSON 数据
 		logger.Info("Parsing and filtering JSON data...")
-		pools, err := parser.ParseAndFilter(outputFile, programID, quoteMint)
+		pools, err := parser.ParseAndFilter(outputFile, programID, solAddress)
 		if err != nil {
 			logger.Fatalf("Failed to parse or filter JSON: %v", err)
 		}
 
 		// 4. 将筛选的数据存入 Redis
-		logger.Info("Processing data and storing in Redis...")
+		logger.Infof("Processing %d data and storing in Redis...", len(pools))
 		batchData := make(map[string]string)
 		for _, pool := range pools {
-			key := pool.BaseMint
-			value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
-			batchData[key] = value
+			key := func() string {
+				if pool.BaseMint == solAddress {
+					return pool.QuoteMint
+				} else if pool.QuoteMint == solAddress {
+					return pool.BaseMint
+				}
+				return ""
+			}()
+			if key == "" {
+				logger.Fatalf("Invalid pool mint address: %v", pool)
+			} else {
+				value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
+				batchData[key] = value
+			}
 		}
 
 		// 批量写入 Redis

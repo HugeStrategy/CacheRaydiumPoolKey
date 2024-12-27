@@ -17,7 +17,7 @@ type Pool struct {
 }
 
 // ParseAndFilter processes JSON data in a memory-efficient way.
-func ParseAndFilter(filepath string, programID, quoteMint string) ([]Pool, error) {
+func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, error) {
 	file, err := os.Open(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %v", err)
@@ -46,7 +46,7 @@ func ParseAndFilter(filepath string, programID, quoteMint string) ([]Pool, error
 		// Check if key is "official" or "unOfficial"
 		if key == "official" || key == "unOfficial" {
 			// Read the array
-			if err := processPools(decoder, programID, quoteMint, &result); err != nil {
+			if err := processPools(decoder, programID, solAddress, &result); err != nil {
 				return nil, fmt.Errorf("error processing pools for key %s: %v", key, err)
 			}
 		} else {
@@ -62,7 +62,7 @@ func ParseAndFilter(filepath string, programID, quoteMint string) ([]Pool, error
 }
 
 // processPools processes a JSON array of pools, filtering and appending matching entries.
-func processPools(decoder *json.Decoder, programID, quoteMint string, result *[]Pool) error {
+func processPools(decoder *json.Decoder, programID, solAddress string, result *[]Pool) error {
 	// Ensure the next token is the start of an array
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('[') {
@@ -82,18 +82,19 @@ func processPools(decoder *json.Decoder, programID, quoteMint string, result *[]
 		baseVault, _ := poolData["baseVault"].(string)
 		quoteVault, _ := poolData["quoteVault"].(string)
 		programId, _ := poolData["programId"].(string)
-		quoteMintValue, _ := poolData["quoteMint"].(string)
+		quoteMint, _ := poolData["quoteMint"].(string)
 
-		if programId == programID && quoteMintValue == quoteMint {
+		if programId == programID && (baseMint == solAddress || quoteMint == solAddress) {
 			*result = append(*result, Pool{
 				ID:         id,
 				BaseMint:   baseMint,
 				BaseVault:  baseVault,
 				QuoteVault: quoteVault,
 				ProgramID:  programId,
-				QuoteMint:  quoteMintValue,
+				QuoteMint:  quoteMint,
 			})
 		}
+
 	}
 
 	// Ensure the next token is the end of the array
