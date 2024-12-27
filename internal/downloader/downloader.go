@@ -33,10 +33,11 @@ func DownloadFile(url, filepath string) error {
 	defer out.Close()
 
 	var writer io.Writer
+	var bar *progressbar.ProgressBar
 
 	if contentLength > 0 {
 		// 初始化具有已知总大小的进度条
-		bar := progressbar.NewOptions64(
+		bar = progressbar.NewOptions64(
 			contentLength,
 			progressbar.OptionSetDescription("Downloading"),
 			progressbar.OptionSetWriter(os.Stdout),
@@ -48,19 +49,20 @@ func DownloadFile(url, filepath string) error {
 				BarStart:      "[",
 				BarEnd:        "]",
 			}),
+			progressbar.OptionClearOnFinish(), // 确保下载完成后清除进度条
 		)
 		writer = io.MultiWriter(out, bar)
 	} else {
 		// 初始化无总大小的进度指示器（旋转器）
 		fmt.Println("Downloading (unknown size)...")
-		bar := progressbar.NewOptions(
+		bar = progressbar.NewOptions(
 			-1,
 			progressbar.OptionSetDescription("Downloading"),
 			progressbar.OptionSetWriter(os.Stdout),
 			progressbar.OptionSpinnerType(14),
 			progressbar.OptionSetWidth(40),
 			progressbar.OptionFullWidth(),
-			progressbar.OptionClearOnFinish(),
+			progressbar.OptionClearOnFinish(), // 确保下载完成后清除进度条
 			progressbar.OptionShowBytes(true),
 			progressbar.OptionSetTheme(progressbar.Theme{
 				Saucer:        "=",
@@ -79,11 +81,10 @@ func DownloadFile(url, filepath string) error {
 	}
 
 	// 确保进度条完成
-	if contentLength > 0 {
-		fmt.Println("\nDownload completed successfully.")
-	} else {
-		fmt.Println("Download completed successfully.")
+	if bar != nil {
+		_ = bar.Finish() // 显式完成进度条
 	}
 
+	fmt.Println("Download completed successfully.")
 	return nil
 }
