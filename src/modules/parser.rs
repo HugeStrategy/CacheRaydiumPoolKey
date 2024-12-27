@@ -3,10 +3,9 @@ use bytes::BytesMut;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use tokio::fs::File;
-use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+use tokio::io::{BufReader};
 use tokio_stream::StreamExt;
 use tokio_util::codec::{Decoder, FramedRead};
-
 
 const BUFFER_SIZE: usize = 16 * 1024; // 16KB buffer
 
@@ -53,7 +52,7 @@ impl Decoder for JsonDecoder {
             return Ok(None);
         }
 
-        match simd_json::from_slice(src) {
+        match serde_json::from_slice(src) {
             Ok(pool) => {
                 src.clear();
                 Ok(Some(pool))
@@ -81,4 +80,28 @@ pub async fn parse_and_filter_stream(
         });
 
     Ok(stream)
+}
+
+// 为了兼容性，保留同步版本
+pub fn parse_and_filter(filepath: &str, program_id: &str, quote_mint: &str) -> Result<Vec<Pool>> {
+    let file = std::fs::File::open(filepath)?;
+    let data: RootData = serde_json::from_reader(file)?;
+
+    let mut filtered_pools = Vec::new();
+
+    // Process official pools with pre-allocated capacity
+    filtered_pools.extend(
+        data.official
+            .into_iter()
+            .filter(|pool| pool.program_id == program_id && pool.quote_mint == quote_mint),
+    );
+
+    // Process unofficial pools
+    filtered_pools.extend(
+        data.unofficial
+            .into_iter()
+            .filter(|pool| pool.program_id == program_id && pool.quote_mint == quote_mint),
+    );
+
+    Ok(filtered_pools)
 }
