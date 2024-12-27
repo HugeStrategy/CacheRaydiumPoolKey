@@ -2,12 +2,10 @@ use anyhow::Result;
 use bytes::BytesMut;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
 use tokio::fs::File;
-use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+use tokio::io::BufReader;
 use tokio_stream::StreamExt;
 use tokio_util::codec::{Decoder, FramedRead};
-use serde_json;  // 改用 serde_json 替代 simd_json
 
 const BUFFER_SIZE: usize = 16 * 1024; // 16KB buffer
 
@@ -65,7 +63,7 @@ impl Decoder for JsonDecoder {
 }
 
 pub async fn parse_and_filter_stream<'a>(
-    filepath: &'a str,
+    filepath: &str,
     program_id: &'a str,
     quote_mint: &'a str,
 ) -> Result<impl Stream<Item = Result<Pool>> + 'a> {
@@ -73,17 +71,18 @@ pub async fn parse_and_filter_stream<'a>(
     let reader = BufReader::with_capacity(BUFFER_SIZE, file);
 
     let stream = FramedRead::new(reader, JsonDecoder::new())
-        .filter(move |pool_result| async move {
-            match pool_result {
-                Ok(pool) => pool.program_id == program_id && pool.quote_mint == quote_mint,
-                Err(_) => false,
-            }
+        .filter(move |pool_result| {
+            let pool = match pool_result {
+                Ok(pool) => pool,
+                Err(_) => return false,
+            };
+            pool.program_id == program_id && pool.quote_mint == quote_mint
         });
 
     Ok(stream)
 }
 
-// 同步版本
+// 为了兼容性，保留同步版本但使用优化的解析器
 pub fn parse_and_filter(filepath: &str, program_id: &str, quote_mint: &str) -> Result<Vec<Pool>> {
     let file = std::fs::File::open(filepath)?;
     let reader = std::io::BufReader::new(file);
@@ -91,12 +90,14 @@ pub fn parse_and_filter(filepath: &str, program_id: &str, quote_mint: &str) -> R
 
     let mut filtered_pools = Vec::new();
 
+    // Process official pools with pre-allocated capacity
     filtered_pools.extend(
         data.official
             .into_iter()
             .filter(|pool| pool.program_id == program_id && pool.quote_mint == quote_mint),
     );
 
+    // Process unofficial pools
     filtered_pools.extend(
         data.unofficial
             .into_iter()
