@@ -1,7 +1,14 @@
-// src/modules/parser.rs
 use anyhow::Result;
+use bytes::BytesMut;
+use futures::Stream;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use tokio::fs::File;
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+use tokio_stream::StreamExt;
+use tokio_util::codec::{Decoder, FramedRead};
+
+
+const BUFFER_SIZE: usize = 16 * 1024; // 16KB buffer
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Pool {
@@ -25,25 +32,53 @@ struct RootData {
     unofficial: Vec<Pool>,
 }
 
-pub fn parse_and_filter(filepath: &str, program_id: &str, quote_mint: &str) -> Result<Vec<Pool>> {
-    let file = File::open(filepath)?;
-    let data: RootData = serde_json::from_reader(file)?;
+struct JsonDecoder {
+    buffer: BytesMut,
+}
 
-    let mut filtered_pools = Vec::new();
+impl JsonDecoder {
+    fn new() -> Self {
+        Self {
+            buffer: BytesMut::with_capacity(BUFFER_SIZE),
+        }
+    }
+}
 
-    // Process official pools
-    filtered_pools.extend(
-        data.official
-            .into_iter()
-            .filter(|pool| pool.program_id == program_id && pool.quote_mint == quote_mint),
-    );
+impl Decoder for JsonDecoder {
+    type Item = Pool;
+    type Error = anyhow::Error;
 
-    // Process unofficial pools
-    filtered_pools.extend(
-        data.unofficial
-            .into_iter()
-            .filter(|pool| pool.program_id == program_id && pool.quote_mint == quote_mint),
-    );
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        if src.is_empty() {
+            return Ok(None);
+        }
 
-    Ok(filtered_pools)
+        match simd_json::from_slice(src) {
+            Ok(pool) => {
+                src.clear();
+                Ok(Some(pool))
+            }
+            Err(_) => Ok(None),
+        }
+    }
+}
+
+pub async fn parse_and_filter_stream(
+    filepath: &str,
+    program_id: &str,
+    quote_mint: &str,
+) -> Result<impl Stream<Item = Result<Pool>>> {
+    let file = File::open(filepath).await?;
+    let reader = BufReader::with_capacity(BUFFER_SIZE, file);
+
+    let stream = FramedRead::new(reader, JsonDecoder::new())
+        .filter(move |pool_result| {
+            let pool = match pool_result {
+                Ok(pool) => pool,
+                Err(_) => return false,
+            };
+            pool.program_id == program_id && pool.quote_mint == quote_mint
+        });
+
+    Ok(stream)
 }

@@ -11,6 +11,7 @@ use clap::Parser;
 use env_logger::Env;
 use log::{error, info};
 use modules::{downloader, parser, redis_client::RedisClient};
+use futures::StreamExt;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -51,20 +52,29 @@ async fn main() -> Result<()> {
     downloader::download_file(&cli.json_url, &cli.output_file).await?;
     info!("Download completed successfully.");
 
-    // 3. Parse and filter JSON data
+    // 3. Parse and filter JSON data using stream
     info!("Parsing and filtering JSON data...");
-    let pools = parser::parse_and_filter(&cli.output_file, &cli.program_id, &cli.quote_mint)?;
+    let mut pool_stream = parser::parse_and_filter_stream(
+        &cli.output_file,
+        &cli.program_id,
+        &cli.quote_mint,
+    ).await?;
 
-    // 4. Store filtered data in Redis
+    // 4. Process stream and store in Redis
     info!("Processing data and storing in Redis...");
-    for pool in pools {
-        let key = pool.base_mint;
-        let value = format!("{},{},{}", pool.id, pool.base_vault, pool.quote_vault);
+    while let Some(pool_result) = pool_stream.next().await {
+        match pool_result {
+            Ok(pool) => {
+                let key = pool.base_mint;
+                let value = format!("{},{},{}", pool.id, pool.base_vault, pool.quote_vault);
 
-        match client.set_if_not_exists(&key, &value).await {
-            Ok(true) => info!("Stored key {} in Redis", key),
-            Ok(false) => info!("Key {} already exists in Redis", key),
-            Err(e) => error!("Failed to set key {} in Redis: {}", key, e),
+                match client.set_if_not_exists(&key, &value).await {
+                    Ok(true) => info!("Stored key {} in Redis", key),
+                    Ok(false) => info!("Key {} already exists in Redis", key),
+                    Err(e) => error!("Failed to set key {} in Redis: {}", key, e),
+                }
+            }
+            Err(e) => error!("Error processing pool: {}", e),
         }
     }
 
