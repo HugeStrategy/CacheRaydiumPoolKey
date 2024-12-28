@@ -60,22 +60,14 @@ var rootCmd = &cobra.Command{
 		logger.Infof("Processing %d data and storing in Redis...", len(pools))
 		batchData := make(map[string]string)
 		for _, pool := range pools {
-			key := func() string {
-				if pool.BaseMint == solAddress {
-					return pool.QuoteMint
-				} else if pool.QuoteMint == solAddress {
-					return pool.BaseMint
-				}
-				return ""
-			}()
-			if key == "" {
-				logger.Fatalf("Invalid pool mint address: %v", pool)
-			} else {
-				value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
-				batchData[key] = value
+			key := pool.QuoteMint
+			value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
+			if batchData[key] != "" {
+				logger.Warnf("Duplicate key found: %v", key)
 			}
+			batchData[key] = value
 		}
-
+		logger.Infof("Batch data: %v", len(batchData))
 		// 批量写入 Redis
 		if err := client.BatchSet(batchData); err != nil {
 			logger.Fatalf("Failed to store data in Redis: %v", err)

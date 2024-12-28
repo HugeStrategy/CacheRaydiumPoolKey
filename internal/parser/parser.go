@@ -24,7 +24,6 @@ func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, erro
 	}
 	defer file.Close()
 
-	// Create a JSON decoder for streaming
 	decoder := json.NewDecoder(file)
 
 	// Move to the first token (start of the object)
@@ -33,24 +32,21 @@ func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, erro
 		return nil, errors.New("invalid JSON format: expected object")
 	}
 
-	var result []Pool
+	var filteredPools []Pool
 
 	// Iterate over the keys in the top-level object
 	for decoder.More() {
-		// Read the key
 		key, err := decoder.Token()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read key: %v", err)
 		}
 
-		// Check if key is "official" or "unOfficial"
+		// Check for "official" or "unOfficial"
 		if key == "official" || key == "unOfficial" {
-			// Read the array
-			if err := processPools(decoder, programID, solAddress, &result); err != nil {
+			if err := processPools(decoder, programID, solAddress, &filteredPools); err != nil {
 				return nil, fmt.Errorf("error processing pools for key %s: %v", key, err)
 			}
 		} else {
-			// Skip unknown key's value by decoding into json.RawMessage
 			var skip json.RawMessage
 			if err := decoder.Decode(&skip); err != nil {
 				return nil, fmt.Errorf("failed to skip key %s: %v", key, err)
@@ -58,24 +54,27 @@ func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, erro
 		}
 	}
 
+	// Second filtering step: Remove pools with duplicate BaseMint or QuoteMint values
+	fmt.Println("Total pools:", len(filteredPools))
+	result := removeDuplicatePools(filteredPools)
+	fmt.Println("Duplicate pools:", len(filteredPools)-len(result))
 	return result, nil
 }
 
 // processPools processes a JSON array of pools, filtering and appending matching entries.
 func processPools(decoder *json.Decoder, programID, solAddress string, result *[]Pool) error {
-	// Ensure the next token is the start of an array
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('[') {
 		return errors.New("invalid JSON format: expected array")
 	}
 
-	// Iterate through the array
 	for decoder.More() {
 		var poolData map[string]interface{}
 		if err := decoder.Decode(&poolData); err != nil {
 			return fmt.Errorf("failed to decode pool data: %v", err)
 		}
 
+		// Filtering logic for programID and solAddress
 		// Extract and filter the pool data
 		id, _ := poolData["id"].(string)
 		baseMint, _ := poolData["baseMint"].(string)
@@ -84,24 +83,54 @@ func processPools(decoder *json.Decoder, programID, solAddress string, result *[
 		programId, _ := poolData["programId"].(string)
 		quoteMint, _ := poolData["quoteMint"].(string)
 
-		if programId == programID && (baseMint == solAddress || quoteMint == solAddress) {
-			*result = append(*result, Pool{
-				ID:         id,
-				BaseMint:   baseMint,
-				BaseVault:  baseVault,
-				QuoteVault: quoteVault,
-				ProgramID:  programId,
-				QuoteMint:  quoteMint,
-			})
+		if programId == programID {
+			// Append the pool if the base or quote mint matches the given address
+			// Set Base as Solana
+			if baseMint == solAddress {
+				*result = append(*result, Pool{
+					ID:         id,
+					ProgramID:  programId,
+					BaseMint:   baseMint,
+					BaseVault:  baseVault,
+					QuoteVault: quoteVault,
+					QuoteMint:  quoteMint,
+				})
+			} else if quoteMint == solAddress {
+				*result = append(*result, Pool{
+					ID:         id,
+					ProgramID:  programId,
+					BaseMint:   quoteMint,
+					BaseVault:  quoteVault,
+					QuoteVault: baseMint,
+					QuoteMint:  baseVault,
+				})
+			}
 		}
-
 	}
 
-	// Ensure the next token is the end of the array
 	token, err = decoder.Token()
 	if err != nil || token != json.Delim(']') {
 		return errors.New("invalid JSON format: expected end of array")
 	}
 
 	return nil
+}
+
+// removeDuplicatePools removes pools with duplicate BaseMint or QuoteMint values.
+func removeDuplicatePools(pools []Pool) []Pool {
+	seenCount := make(map[string]int)
+	// Count occurrences of BaseMint and QuoteMint
+	for _, pool := range pools {
+		seenCount[pool.QuoteMint]++
+	}
+	// Filter out pools with duplicate BaseMint or QuoteMint
+	var result []Pool
+	for _, pool := range pools {
+		// Only append pools with unique QuoteMint
+		if seenCount[pool.QuoteMint] == 1 {
+			result = append(result, pool)
+		}
+	}
+
+	return result
 }
