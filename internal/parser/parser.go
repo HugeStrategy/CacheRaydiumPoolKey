@@ -79,21 +79,22 @@ func processPools(decoder *json.Decoder, programID, solAddress string, result *[
 		id, _ := poolData["id"].(string)
 		baseMint, _ := poolData["baseMint"].(string)
 		baseVault, _ := poolData["baseVault"].(string)
+		quoteMint, _ := poolData["quoteMint"].(string)
 		quoteVault, _ := poolData["quoteVault"].(string)
 		programId, _ := poolData["programId"].(string)
-		quoteMint, _ := poolData["quoteMint"].(string)
 
 		if programId == programID {
 			// Append the pool if the base or quote mint matches the given address
 			// Set Base as Solana
+
 			if baseMint == solAddress {
 				*result = append(*result, Pool{
 					ID:         id,
 					ProgramID:  programId,
 					BaseMint:   baseMint,
 					BaseVault:  baseVault,
-					QuoteVault: quoteVault,
 					QuoteMint:  quoteMint,
+					QuoteVault: quoteVault,
 				})
 			} else if quoteMint == solAddress {
 				*result = append(*result, Pool{
@@ -101,8 +102,8 @@ func processPools(decoder *json.Decoder, programID, solAddress string, result *[
 					ProgramID:  programId,
 					BaseMint:   quoteMint,
 					BaseVault:  quoteVault,
-					QuoteVault: baseMint,
-					QuoteMint:  baseVault,
+					QuoteMint:  baseMint,
+					QuoteVault: baseVault,
 				})
 			}
 		}
