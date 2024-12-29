@@ -59,20 +59,23 @@ var rootCmd = &cobra.Command{
 		// 4. 将筛选的数据存入 Redis
 		logger.Infof("Processing %d data and storing in Redis...", len(pools))
 		batchData := make(map[string]string)
+		ScammerPoolCount := 0
 		for _, pool := range pools {
 			key := pool.QuoteMint
 			value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
 			if batchData[key] != "" {
 				logger.Warnf("Overwrite duplicate key: %v", key)
+				ScammerPoolCount++
 			}
 			batchData[key] = value
 		}
-		logger.Infof("Batch data: %v", len(batchData))
+		logger.Infof("All pool count: %v", len(pools))
+		logger.Infof("Scammer pool count: %v", ScammerPoolCount)
+		logger.Infof("effective pool count: %v", len(batchData))
 		// 批量写入 Redis
 		if err := client.BatchSet(batchData); err != nil {
 			logger.Fatalf("Failed to store data in Redis: %v", err)
 		}
-
 		logger.Info("All data processed and stored in Redis.")
 
 		// 5. 从Solana RPC监听新的AMM Pool创建并存入Redis
