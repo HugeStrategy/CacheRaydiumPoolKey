@@ -63,7 +63,7 @@ var rootCmd = &cobra.Command{
 			key := pool.QuoteMint
 			value := fmt.Sprintf("%s,%s,%s", pool.ID, pool.BaseVault, pool.QuoteVault)
 			if batchData[key] != "" {
-				logger.Warnf("Duplicate key found: %v", key)
+				logger.Warnf("Overwrite duplicate key: %v", key)
 			}
 			batchData[key] = value
 		}

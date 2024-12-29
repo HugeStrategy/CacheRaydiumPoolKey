@@ -56,9 +56,9 @@ func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, erro
 
 	// Second filtering step: Remove pools with duplicate BaseMint or QuoteMint values
 	fmt.Println("Total pools:", len(filteredPools))
-	result := removeDuplicatePools(filteredPools)
-	fmt.Println("Duplicate pools:", len(filteredPools)-len(result))
-	return result, nil
+	//result := removeDuplicatePools(filteredPools)
+	//fmt.Println("Duplicate pools:", len(filteredPools)-len(result))
+	return filteredPools, nil
 }
 
 // processPools processes a JSON array of pools, filtering and appending matching entries.
