@@ -34,7 +34,11 @@ type Pool struct {
 
 func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) error {
 	// Start GRPC connection
-	conn := grpcConnect(grpcAddress)
+	conn, err := grpcConnect(grpcAddress)
+	if err != nil {
+		log.Logger.Errorf("Failed to connect to GRPC: %v", err)
+		return err
+	}
 	defer conn.Close()
 
 	// Create Geyser client
@@ -62,11 +66,13 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 	ctx := context.Background()
 	stream, err := grpcClient.Subscribe(ctx)
 	if err != nil {
-		log.Logger.Fatalf("Failed to subscribe: %v", err)
+		log.Logger.Errorf("Failed to subscribe: %v", err)
+		return err
 	}
 	err = stream.Send(&subscription)
 	if err != nil {
-		log.Logger.Fatalf("Failed to send subscription: %v", err)
+		log.Logger.Errorf("Failed to send subscription: %v", err)
+		return err
 	}
 
 	// Receive and process updates
@@ -83,8 +89,10 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 			err = redisClient.SetKeyValue(pool.CA, fmt.Sprintf("%s,%s,%s", pool.PoolID, pool.BaseVault, pool.QuoteVault))
 			if err != nil {
 				log.Logger.Errorf("Failed to write pool info to Redis: %v", err)
+				return err
 			} else {
 				log.Logger.Infof("Write New Raydium Pool Successfully. CA: %s Pool ID: %s BaseVault: %s QuoteVault: %s\n", pool.CA, pool.PoolID, pool.BaseVault, pool.QuoteVault)
+				return err
 			}
 		}
 	}
@@ -116,7 +124,7 @@ func processTransaction(transactionUpdate *pb.SubscribeUpdate_Transaction) Pool 
 	return pool
 }
 
-func grpcConnect(address string) *grpc.ClientConn {
+func grpcConnect(address string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	pool, _ := x509.SystemCertPool()
 	creds := credentials.NewClientTLSFromCert(pool, "")
@@ -127,8 +135,9 @@ func grpcConnect(address string) *grpc.ClientConn {
 	log.Logger.Println("Starting grpc client, connecting to", address)
 	conn, err := grpc.Dial(address, opts...)
 	if err != nil {
-		log.Logger.Fatalf("fail to dial: %v", err)
+		log.Logger.Errorf("fail to dial: %v", err)
+		return nil, err
 	}
 
-	return conn
+	return conn, err
 }

@@ -76,7 +76,10 @@ var monitorCmd = &cobra.Command{
 		client := redis.NewRedisClient(redisAddr, redisPassword, redisDB)
 		log.Logger.Info("Listening to Solana RPC for new AMM Pool creation...")
 		for {
-			subscribe.SubscribeAMMPoolCreate("solana-yellowstone-grpc.publicnode.com:443", *client)
+			err := subscribe.SubscribeAMMPoolCreate("solana-yellowstone-grpc.publicnode.com:443", *client)
+			if err != nil {
+				log.Logger.Errorf("Failed to subscribe to AMM Pool creation: %v", err)
+			}
 			log.Logger.Error("GRPC connection failed. Retrying...")
 		}
 	},
