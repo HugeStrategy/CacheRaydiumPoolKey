@@ -21,7 +21,7 @@ var (
 	outputFile    = "mainnet.json"
 	programID     = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
 	solAddress    = "So11111111111111111111111111111111111111112"
-	interval      = 300 * time.Second // default interval
+	interval      = 30 * time.Minute // default interval
 )
 
 var rootCmd = &cobra.Command{
@@ -45,7 +45,7 @@ var scheduledCmd = &cobra.Command{
 				log.Logger.Errorf("Invalid interval: %v", err)
 				return
 			}
-			interval = time.Second * time.Duration(intVal)
+			interval = time.Minute * time.Duration(intVal)
 		}
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
