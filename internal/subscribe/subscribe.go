@@ -62,11 +62,11 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 	ctx := context.Background()
 	stream, err := grpcClient.Subscribe(ctx)
 	if err != nil {
-		log.Logger.Fatalf("%v", err)
+		log.Logger.Fatalf("Failed to subscribe: %v", err)
 	}
 	err = stream.Send(&subscription)
 	if err != nil {
-		log.Logger.Fatalf("%v", err)
+		log.Logger.Fatalf("Failed to send subscription: %v", err)
 	}
 
 	// Receive and process updates

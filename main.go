@@ -111,7 +111,7 @@ func SyncWithRaydiumJsonFile(client *redis.RedisClient) {
 	log.Logger.Infof("Scammer pool count: %v", ScammerPoolCount)
 	log.Logger.Infof("effective pool count: %v", len(batchData))
 	if err := client.BatchSet(batchData); err != nil {
-		log.Logger.Fatalf("Failed to store data in Redis: %v", err)
+		log.Logger.Errorf("Failed to store data in Redis: %v", err)
 	}
 	log.Logger.Info("All data processed and stored in Redis.")
 }
