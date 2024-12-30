@@ -92,7 +92,6 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 				return err
 			} else {
 				log.Logger.Infof("Write New Raydium Pool Successfully. CA: %s Pool ID: %s BaseVault: %s QuoteVault: %s\n", pool.CA, pool.PoolID, pool.BaseVault, pool.QuoteVault)
-				return err
 			}
 		}
 	}
