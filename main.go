@@ -36,6 +36,9 @@ var scheduledCmd = &cobra.Command{
 	Long:  `Run the Raydium synchronization in scheduled mode with a specified interval.`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		client := redis.NewRedisClient(redisAddr, redisPassword, redisDB)
+		SyncWithRaydiumJsonFile(client)
+		log.Logger.Info("Scheduled mode completed successfully.")
 		if len(args) > 0 {
 			intVal, err := strconv.Atoi(args[0])
 			if err != nil {
