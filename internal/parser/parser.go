@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"RaydiumSync/internal/log"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,9 +56,9 @@ func ParseAndFilter(filepath string, programID, solAddress string) ([]Pool, erro
 	}
 
 	// Second filtering step: Remove pools with duplicate BaseMint or QuoteMint values
-	fmt.Println("Total pools:", len(filteredPools))
+	log.Logger.Info("Total pools:", len(filteredPools))
 	//result := removeDuplicatePools(filteredPools)
-	//fmt.Println("Duplicate pools:", len(filteredPools)-len(result))
+	//log.Logger.Info("Duplicate pools:", len(filteredPools)-len(result))
 	return filteredPools, nil
 }
 
