@@ -41,3 +41,11 @@ func (r *RedisClient) Get(key string) (string, error) {
 	}
 	return val, nil
 }
+
+func (r *RedisClient) SetKeyValue(key, value string) error {
+	err := r.Client.Set(ctx, key, value, 0).Err()
+	if err != nil {
+		return fmt.Errorf("failed to set key: %v", err)
+	}
+	return nil
+}

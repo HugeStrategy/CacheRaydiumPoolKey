@@ -64,9 +64,9 @@ var rootCmd = &cobra.Command{
 		}
 		log.Logger.Info("All data processed and stored in Redis.")
 
-		// 5. 从Solana RPC监听新的AMM Pool创建并存入Redis
+		//5. 从YellowStone GRPC监听新的AMM Pool创建并存入Redis
 		log.Logger.Info("Listening to Solana RPC for new AMM Pool creation...")
-		subscribe.SubscribeAMMPoolCreate("solana-yellowstone-grpc.publicnode.com:443")
+		subscribe.SubscribeAMMPoolCreate("solana-yellowstone-grpc.publicnode.com:443", *client)
 	},
 }
 
