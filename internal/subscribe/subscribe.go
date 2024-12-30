@@ -33,7 +33,6 @@ type Pool struct {
 }
 
 func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) error {
-
 	// Start GRPC connection
 	conn := grpcConnect(grpcAddress)
 	defer conn.Close()
