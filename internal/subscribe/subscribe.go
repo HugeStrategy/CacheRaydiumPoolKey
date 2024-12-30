@@ -73,7 +73,7 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 	for {
 		update, err := stream.Recv()
 		if err != nil {
-			log.Logger.Fatalf("Failed to receive update: %v", err)
+			log.Logger.Errorf("Failed to receive update: %v", err)
 			return err
 		}
 
@@ -82,7 +82,7 @@ func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) e
 			pool := processTransaction(transactionUpdate)
 			err = redisClient.SetKeyValue(pool.CA, fmt.Sprintf("%s,%s,%s", pool.PoolID, pool.BaseVault, pool.QuoteVault))
 			if err != nil {
-				log.Logger.Fatalf("Failed to write pool info to Redis: %v", err)
+				log.Logger.Errorf("Failed to write pool info to Redis: %v", err)
 			} else {
 				log.Logger.Infof("Write New Raydium Pool Successfully. CA: %s Pool ID: %s BaseVault: %s QuoteVault: %s\n", pool.CA, pool.PoolID, pool.BaseVault, pool.QuoteVault)
 			}
