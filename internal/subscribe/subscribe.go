@@ -35,7 +35,7 @@ type Pool struct {
 func SubscribeAMMPoolCreate(grpcAddress string, redisClient redis.RedisClient) error {
 
 	// Start GRPC connection
-	conn := grpc_connect(grpcAddress)
+	conn := grpcConnect(grpcAddress)
 	defer conn.Close()
 
 	// Create Geyser client
@@ -117,7 +117,7 @@ func processTransaction(transactionUpdate *pb.SubscribeUpdate_Transaction) Pool 
 	return pool
 }
 
-func grpc_connect(address string) *grpc.ClientConn {
+func grpcConnect(address string) *grpc.ClientConn {
 	var opts []grpc.DialOption
 	pool, _ := x509.SystemCertPool()
 	creds := credentials.NewClientTLSFromCert(pool, "")
